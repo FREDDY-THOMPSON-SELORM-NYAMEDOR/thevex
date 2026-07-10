@@ -7,8 +7,8 @@ import { getStoredUser } from '../services/user';
 const heroImage = { uri: 'https://images.unsplash.com/photo-1520974735194-8f4d31a0f38a?auto=format&fit=crop&w=1400&q=80' };
 
 export default function CreateGroupScreen({ navigation, route }) {
-  const [location, setLocation] = useState('Lagos');
-  const [origin, setOrigin] = useState('Ikeja');
+  const [location, setLocation] = useState('Aqua Safari');
+  const [origin, setOrigin] = useState('Madina');
   const [time, setTime] = useState('7:00 PM');
   const [budget, setBudget] = useState('30');
   const [message, setMessage] = useState('');
