@@ -59,6 +59,7 @@ function parseRideTime(value) {
 async function ensureUser(userName, userEmail) {
   if (dbReady) {
     let user = await User.findOne({ where: { email: userEmail } });
+    console.log(user)
     if (!user) {
       user = await User.create({
         name: userName || 'Guest',

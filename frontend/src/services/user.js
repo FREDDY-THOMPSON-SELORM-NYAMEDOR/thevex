@@ -29,7 +29,8 @@ export async function logoutUser() {
 }
 
 export async function getAppUser() {
-  return getStoredUser();
+  const theUser = getStoredUser()
+  return theUser;
 }
 
 export const APP_USER = {

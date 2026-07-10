@@ -17,7 +17,7 @@ export default function App() {
           socket.connect();
         }
         joinUser(user.id);
-        console.log('User connected')
+        console.log('User connected!')
       }
     }
     

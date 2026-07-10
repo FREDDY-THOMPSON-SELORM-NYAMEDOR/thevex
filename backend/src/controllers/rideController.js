@@ -55,6 +55,7 @@ async function findMatchingRide(request) {
     const match = candidates.find((candidate) => {
       const candidateOrigin = candidate.origin?.trim().toLowerCase();
       const candidateDestination = candidate.destination?.trim().toLowerCase();
+      //console.log(candidate)
       return (
         candidate.user_id !== request.user_id &&
         candidateOrigin === userOrigin &&
@@ -82,7 +83,7 @@ async function findMatchingRide(request) {
       matchedRide: match
     };
 
-    console.log(request.user_id, match.user_id, request, match, createdMatch.id);
+    //console.log(request.user_id, match.user_id, request, match, createdMatch.id);
     emitToUser(request.user_id, 'matchFound', {
       matchId: createdMatch.id,
       request,              // their own request

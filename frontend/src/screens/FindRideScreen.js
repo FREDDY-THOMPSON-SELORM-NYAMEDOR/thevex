@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ImageBackground, ScrollView } from 'react-native';
 import { postJson } from '../services/api';
 import ScreenLayout from '../components/ScreenLayout';
-import { APP_USER } from '../services/user';
+import { getAppUser, getStoredUser } from '../services/user';
+//import { APP_USER } from '../services/user';
 
 const heroImage = { uri: 'https://images.unsplash.com/photo-1555375771-1f10f2359ecf?auto=format&fit=crop&w=1400&q=80' };
 
@@ -12,6 +13,17 @@ export default function FindRideScreen({ navigation, route }) {
   const [time, setTime] = useState('9:30 AM');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [APP_USER, setAPP_USER]  = useState({});
+
+  useEffect(()=>{
+    const gu = async()=> {
+      const theUser = await getStoredUser();
+      setAPP_USER(theUser); 
+      
+    };
+    gu();
+   
+  },[])
 
   async function handleFindRide() {
     try {
