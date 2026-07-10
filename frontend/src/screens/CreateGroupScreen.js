@@ -1,0 +1,77 @@
+import React, { useEffect, useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ImageBackground } from 'react-native';
+import { postJson } from '../services/api';
+import ScreenLayout from '../components/ScreenLayout';
+import { getStoredUser } from '../services/user';
+
+const heroImage = { uri: 'https://images.unsplash.com/photo-1520974735194-8f4d31a0f38a?auto=format&fit=crop&w=1400&q=80' };
+
+export default function CreateGroupScreen({ navigation, route }) {
+  const [location, setLocation] = useState('Lagos');
+  const [origin, setOrigin] = useState('Ikeja');
+  const [time, setTime] = useState('7:00 PM');
+  const [budget, setBudget] = useState('30');
+  const [message, setMessage] = useState('');
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    async function loadUser() {
+      setCurrentUser(await getStoredUser());
+    }
+    loadUser();
+  }, []);
+
+  async function handleCreate() {
+    try {
+      setMessage('Creating group...');
+      await postJson('/createGroup', {
+        location: location.trim(),
+        origin: origin.trim(),
+        budget: Number(budget),
+        time: time.trim(),
+        split_rules: 'Even split',
+        userId: currentUser?.id
+      });
+      navigation.navigate('BrowseGroups');
+    } catch (error) {
+      setMessage(error.message || 'Could not create group');
+    }
+  }
+
+  return (
+    <ScreenLayout navigation={navigation} route={route}>
+      <ImageBackground source={heroImage} style={styles.background} imageStyle={styles.backgroundImage}>
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          <View style={styles.card}>
+            <Text style={styles.title}>Create a live group</Text>
+            <Text style={styles.subtitle}>Set your route, budget, and time, then invite fellow riders.</Text>
+
+            <TextInput style={styles.input} placeholder="Location" placeholderTextColor="#9bb1ca" value={location} onChangeText={setLocation} />
+            <TextInput style={styles.input} placeholder="Origin" placeholderTextColor="#9bb1ca" value={origin} onChangeText={setOrigin} />
+            <TextInput style={styles.input} placeholder="Time (e.g. 6:30 PM)" placeholderTextColor="#9bb1ca" value={time} onChangeText={setTime} />
+            <TextInput style={styles.input} placeholder="Budget" placeholderTextColor="#9bb1ca" value={budget} onChangeText={setBudget} keyboardType="numeric" />
+
+            {message ? <Text style={styles.message}>{message}</Text> : null}
+
+            <TouchableOpacity style={styles.primaryButton} onPress={handleCreate}>
+              <Text style={styles.buttonText}>Create Group</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </ImageBackground>
+    </ScreenLayout>
+  );
+}
+
+const styles = StyleSheet.create({
+  background: { flex: 1, backgroundColor: '#061426' },
+  backgroundImage: { opacity: 0.8 },
+  container: { flexGrow: 1, justifyContent: 'center', padding: 24 },
+  card: { backgroundColor: 'rgba(6, 24, 44, 0.96)', borderRadius: 28, padding: 24, borderWidth: 1, borderColor: 'rgba(33,211,199,0.14)' },
+  title: { fontSize: 32, fontWeight: '900', color: '#21d3c7', marginBottom: 8 },
+  subtitle: { color: '#c9e5f4', marginBottom: 24, lineHeight: 22 },
+  input: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 18, padding: 16, marginBottom: 16, color: 'white', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  message: { color: '#d5f1ff', marginBottom: 16, fontWeight: '700' },
+  primaryButton: { backgroundColor: '#ff7a1a', padding: 16, borderRadius: 18, marginTop: 8, alignItems: 'center' },
+  buttonText: { color: 'white', textAlign: 'center', fontWeight: '800', fontSize: 16 }
+});
