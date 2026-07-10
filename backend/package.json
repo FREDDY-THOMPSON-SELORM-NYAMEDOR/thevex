@@ -1,0 +1,22 @@
+{
+  "name": "vex-backend",
+  "version": "1.0.0",
+  "description": "VEX backend API with matching, payments, and ride booking",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.4",
+    "cors": "^2.8.3",
+    "dotenv": "^16.4.1",
+    "express": "^4.19.2",
+    "pg": "^8.12.0",
+    "sequelize": "^6.22.0",
+    "socket.io": "^4.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
