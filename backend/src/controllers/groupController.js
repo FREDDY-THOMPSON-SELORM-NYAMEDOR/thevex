@@ -15,6 +15,18 @@ function emitToUser(userId, event, payload) {
   if (io) io.to(`user:${userId}`).emit(event, payload);
 }
 
+function parseDeadline(value) {
+  if (!value) return null;
+  const deadline = new Date(value);
+  return Number.isNaN(deadline.getTime()) ? null : deadline;
+}
+
+function isJoinClosed(group) {
+  if (!group || !group.join_deadline) return false;
+  const deadline = new Date(group.join_deadline);
+  return Number.isNaN(deadline.getTime()) ? false : deadline.getTime() <= Date.now();
+}
+
 async function serializeGroup(group, userId) {
   const dbReady = getDbReady();
   const memoryStore = getMemoryStore();
@@ -37,7 +49,8 @@ async function serializeGroup(group, userId) {
       ...group.get({ plain: true }),
       memberCount,
       isMember,
-      members
+      members,
+      canJoin: !isJoinClosed(group)
     };
   }
 
@@ -55,7 +68,8 @@ async function serializeGroup(group, userId) {
     ...group,
     memberCount,
     isMember,
-    members
+    members,
+    canJoin: !isJoinClosed(group)
   };
 }
 
@@ -65,11 +79,34 @@ const groupController = {
       const dbReady = getDbReady();
       const memoryStore = getMemoryStore();
       const userId = req.body.userId || 1;
+      const joinDeadline = parseDeadline(req.body.joinDeadline || req.body.join_deadline);
+      const scheduleDate = req.body.scheduleDate || req.body.schedule_date;
+      const scheduleDateValue = scheduleDate ? String(scheduleDate).trim() : '';
+
+      if (!scheduleDateValue) {
+        return res.status(400).json({ success: false, message: 'scheduleDate is required' });
+      }
+
+      if (!joinDeadline) {
+        return res.status(400).json({ success: false, message: 'joinDeadline is required' });
+      }
+
+      const scheduleDateTime = new Date(`${scheduleDateValue}T23:59:59`);
+      if (Number.isNaN(scheduleDateTime.getTime())) {
+        return res.status(400).json({ success: false, message: 'scheduleDate must be a valid date' });
+      }
+
+      if (joinDeadline.getTime() > scheduleDateTime.getTime()) {
+        return res.status(400).json({ success: false, message: 'joinDeadline must be on or before the schedule date' });
+      }
+
       const groupPayload = {
         location: req.body.location,
         origin: req.body.origin,
         budget: req.body.budget,
+        schedule_date: scheduleDateValue,
         time: req.body.time,
+        join_deadline: joinDeadline,
         split_rules: req.body.split_rules
       };
 
@@ -111,15 +148,23 @@ const groupController = {
       const dbReady = getDbReady();
       const memoryStore = getMemoryStore();
       const { groupId, userId } = req.body;
+      const group = dbReady
+        ? await Group.findByPk(groupId)
+        : memoryStore.groups.find((entry) => entry.id === Number(groupId));
+
+      if (!group) {
+        return res.status(404).json({ success: false, message: 'Group not found' });
+      }
+
+      if (isJoinClosed(group)) {
+        return res.status(403).json({ success: false, message: 'Join deadline has passed' });
+      }
+
       const membership = dbReady
         ? await GroupMember.create({ group_id: groupId, user_id: userId })
         : { id: memoryStore.groupMembers.length + 1, group_id: groupId, user_id: userId, createdAt: new Date(), updatedAt: new Date() };
 
       if (!dbReady) memoryStore.groupMembers.push(membership);
-
-      const group = dbReady
-        ? await Group.findByPk(groupId)
-        : memoryStore.groups.find((entry) => entry.id === Number(groupId));
 
       const groupForUser = await serializeGroup(group, userId);
       broadcast('groupJoined', { groupId, userId, membership });

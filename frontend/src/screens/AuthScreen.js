@@ -53,15 +53,19 @@ export default function AuthScreen({ navigation }) {
 
           {mode === 'signup' ? (
             <>
+              <Text style={styles.fieldLabel}>Full Name</Text>
               <TextInput style={styles.input} placeholder="Your name" placeholderTextColor="#8eb4c6" value={name} onChangeText={setName} />
+              <Text style={styles.fieldLabel}>Phone Number</Text>
               <TextInput style={styles.input} placeholder="Phone number" placeholderTextColor="#8eb4c6" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
               <View>
+                <Text style={styles.fieldLabel}>Password</Text>
                 <TextInput style={styles.input} placeholder="Password" placeholderTextColor="#8eb4c6" value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
                 <TouchableOpacity style={styles.showToggle} onPress={() => setShowPassword((s) => !s)}>
                   <Text style={styles.showText}>{showPassword ? 'Hide' : 'Show'}</Text>
                 </TouchableOpacity>
               </View>
               <View>
+                <Text style={styles.fieldLabel}>Confirm Password</Text>
                 <TextInput style={styles.input} placeholder="Confirm password" placeholderTextColor="#8eb4c6" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry={!showConfirmPassword} />
                 <TouchableOpacity style={styles.showToggle} onPress={() => setShowConfirmPassword((s) => !s)}>
                   <Text style={styles.showText}>{showConfirmPassword ? 'Hide' : 'Show'}</Text>
@@ -71,9 +75,11 @@ export default function AuthScreen({ navigation }) {
             </>
           ) : null}
 
+          <Text style={styles.fieldLabel}>Email Address</Text>
           <TextInput style={styles.input} placeholder="Email address" placeholderTextColor="#8eb4c6" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
           {mode === 'login' ? (
             <View>
+              <Text style={styles.fieldLabel}>Password</Text>
               <TextInput style={styles.input} placeholder="Password" placeholderTextColor="#8eb4c6" value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
               <TouchableOpacity style={styles.showToggle} onPress={() => setShowPassword((s) => !s)}>
                 <Text style={styles.showText}>{showPassword ? 'Hide' : 'Show'}</Text>
@@ -124,6 +130,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: 'rgba(6,24,44,0.95)', borderRadius: 28, padding: 24, borderWidth: 1, borderColor: 'rgba(33,211,199,0.18)' },
   title: { fontSize: 30, fontWeight: '900', color: '#21d3c7', marginBottom: 8 },
   subtitle: { color: '#c9e5f4', marginBottom: 22, lineHeight: 21 },
+  fieldLabel: { color: '#c9e5f4', fontSize: 13, fontWeight: '700', marginBottom: 8, marginTop: 4 },
   input: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 18, padding: 16, marginBottom: 16, color: 'white', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   message: { color: '#ffd099', marginBottom: 12, fontWeight: '700' },
   primaryButton: { backgroundColor: '#ff7a1a', padding: 16, borderRadius: 18, marginTop: 8, alignItems: 'center' },
