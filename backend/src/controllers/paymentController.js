@@ -14,6 +14,20 @@ function emitToUser(userId, event, payload) {
   if (io) io.to(`user:${userId}`).emit(event, payload);
 }
 
+function markMatchConfirmedIfPaid(match) {
+  if (
+    match &&
+    match.status !== 'confirmed' &&
+    match.user1_payment_status === 'success' &&
+    match.user2_payment_status === 'success'
+  ) {
+    match.status = 'confirmed';
+    return true;
+  }
+
+  return false;
+}
+
 async function createPaymentRecord(payload) {
   const dbReady = getDbReady();
   const memoryStore = getMemoryStore();
@@ -105,11 +119,19 @@ async function verifyPaystackReference(reference) {
       } else if (match.user2_id === payment.user_id) {
         match.user2_payment_status = status;
       }
+
+      const matchConfirmed = markMatchConfirmedIfPaid(match);
+
       await match.save();
       
       // Notify both users about payment status update
       emitToUser(match.user1_id, 'paymentStatusUpdate', { matchId: match.id, user1_status: match.user1_payment_status, user2_status: match.user2_payment_status });
       emitToUser(match.user2_id, 'paymentStatusUpdate', { matchId: match.id, user1_status: match.user1_payment_status, user2_status: match.user2_payment_status });
+
+      if (matchConfirmed) {
+        emitToUser(match.user1_id, 'rideConfirmed', { matchId: match.id, status: 'confirmed', match });
+        emitToUser(match.user2_id, 'rideConfirmed', { matchId: match.id, status: 'confirmed', match });
+      }
     }
   } else {
     // Update in memory store
@@ -119,6 +141,13 @@ async function verifyPaystackReference(reference) {
         match.user1_payment_status = status;
       } else if (match.user2_id === payment.user_id) {
         match.user2_payment_status = status;
+      }
+
+      const matchConfirmed = markMatchConfirmedIfPaid(match);
+
+      if (matchConfirmed) {
+        emitToUser(match.user1_id, 'rideConfirmed', { matchId: match.id, status: 'confirmed', match });
+        emitToUser(match.user2_id, 'rideConfirmed', { matchId: match.id, status: 'confirmed', match });
       }
     }
   }

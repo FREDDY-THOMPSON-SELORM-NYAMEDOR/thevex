@@ -112,7 +112,7 @@ export default function RideTrackingScreen({ navigation, route }) {
           activeRides.map((ride) => {
               const isUser1 = ride.user1_id === currentUser?.id;
               const otherUserId = isUser1 ? ride.user2_id : ride.user1_id;
-              const userConfirmed = isUser1 ? ride.user1_confirmed : ride.user2_confirmed;
+              const userConfirmed = ride.status === 'confirmed' || (isUser1 ? ride.user1_confirmed : ride.user2_confirmed);
               const userPaymentStatus = isUser1 ? ride.user1_payment_status : ride.user2_payment_status;
               const otherPaymentStatus = isUser1 ? ride.user2_payment_status : ride.user1_payment_status;
 
@@ -157,7 +157,7 @@ export default function RideTrackingScreen({ navigation, route }) {
                     </View>
                   </View>
 
-                  {!userConfirmed && userPaymentStatus === 'success' && otherPaymentStatus === 'success' && (
+                  {!userConfirmed && ride.status !== 'confirmed' && userPaymentStatus === 'success' && otherPaymentStatus === 'success' && (
                     <TouchableOpacity style={styles.confirmButton} onPress={() => handleConfirmRide(ride)}>
                       <Text style={styles.confirmButtonText}>Confirm Ride</Text>
                     </TouchableOpacity>

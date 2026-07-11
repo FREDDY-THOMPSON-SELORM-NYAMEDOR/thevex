@@ -11,6 +11,20 @@ function emitToUser(userId, event, payload) {
   if (io) io.to(`user:${userId}`).emit(event, payload);
 }
 
+function markMatchConfirmedIfPaid(match) {
+  if (
+    match &&
+    match.status !== 'confirmed' &&
+    match.user1_payment_status === 'success' &&
+    match.user2_payment_status === 'success'
+  ) {
+    match.status = 'confirmed';
+    return true;
+  }
+
+  return false;
+}
+
 const matchController = {
   async confirmMatch(req, res) {
     try {
@@ -108,12 +122,19 @@ const matchController = {
         match.user2_payment_status = status;
       }
 
+      const matchConfirmed = markMatchConfirmedIfPaid(match);
+
       if (dbReady) {
         await match.save();
       }
 
       emitToUser(match.user1_id, 'paymentStatusUpdate', { matchId, user1_status: match.user1_payment_status, user2_status: match.user2_payment_status });
       emitToUser(match.user2_id, 'paymentStatusUpdate', { matchId, user1_status: match.user1_payment_status, user2_status: match.user2_payment_status });
+
+      if (matchConfirmed) {
+        emitToUser(match.user1_id, 'rideConfirmed', { matchId, status: 'confirmed', match });
+        emitToUser(match.user2_id, 'rideConfirmed', { matchId, status: 'confirmed', match });
+      }
 
       res.json({ success: true, match });
     } catch (error) {
