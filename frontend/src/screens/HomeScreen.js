@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ImageBackground, Animated, useWindowDimensions, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ImageBackground, Animated, useWindowDimensions, Alert, ActivityIndicator } from 'react-native';
+import { CommonActions } from '@react-navigation/native';
+import LogoutConfirm from '../components/LogoutConfirm';
 import { onSocket } from '../services/socket';
 import { getStoredUser, logoutUser } from '../services/user';
 import ScreenLayout from '../components/ScreenLayout';
@@ -9,6 +11,7 @@ const heroImage = { uri: 'https://images.unsplash.com/photo-1519999482648-25049d
 export default function HomeScreen({ navigation, route }) {
   const [alerts, setAlerts] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const [loggingOut, setLoggingOut] = useState(false);
   const pulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -45,17 +48,18 @@ export default function HomeScreen({ navigation, route }) {
   }, []);
 
   async function handleLogout() {
-    Alert.alert('Logout', 'Are you sure you want to log out?', [
-      { text: 'Cancel', onPress: () => {}, style: 'cancel' },
-      {
-        text: 'Logout',
-        onPress: async () => {
-          await logoutUser();
-          navigation.replace('Auth');
-        },
-        style: 'destructive'
-      }
-    ]);
+    try {
+      setLoggingOut(true);
+      await logoutUser();
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Auth' }]
+        })
+      );
+    } finally {
+      setLoggingOut(false);
+    }
   }
 
   const heroScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.02] });
@@ -64,21 +68,27 @@ export default function HomeScreen({ navigation, route }) {
   const actionRow = width >= 760;
 
   return (
-    <ScreenLayout navigation={navigation} route={route}>
-      <View style={styles.container}>
+    <ScreenLayout navigation={navigation} route={route} className="bg-dark">
+      <View style={styles.container} className="px-6">
         {currentUser && (
           <View style={styles.userHeader}>
             <View style={styles.userInfo}>
               <Text style={styles.userName}>{currentUser.name}</Text>
               <Text style={styles.userEmail}>{currentUser.email}</Text>
             </View>
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-              <Text style={styles.logoutText}>Logout</Text>
-            </TouchableOpacity>
+            <LogoutConfirm
+              onLogout={handleLogout}
+              loading={loggingOut}
+              renderTrigger={({ open, disabled }) => (
+                <TouchableOpacity style={styles.logoutButton} onPress={open} disabled={disabled}>
+                  {disabled ? <ActivityIndicator color="white" size="small" /> : <Text style={styles.logoutText}>Logout</Text>}
+                </TouchableOpacity>
+              )}
+            />
           </View>
         )}
 
-        <ImageBackground source={heroImage} style={styles.hero} imageStyle={styles.heroImage}>
+          <ImageBackground source={heroImage} style={styles.hero} imageStyle={styles.heroImage} className="w-full h-64 mb-4">
           <View style={styles.heroOverlay} />
           <Animated.View style={[styles.heroCard, { transform: [{ scale: heroScale }] }]}>
             <Text style={styles.heroTitle}>Ride modern</Text>
@@ -86,7 +96,7 @@ export default function HomeScreen({ navigation, route }) {
           </Animated.View>
         </ImageBackground>
 
-        <View style={[styles.actionList, actionRow && styles.actionRow]}>
+        <View style={[styles.actionList, actionRow && styles.actionRow]} className="flex-row flex-wrap justify-between">
           <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={() => navigation.navigate('FindRide')}>
             <Text style={styles.buttonText}>Find Ride</Text>
           </TouchableOpacity>
@@ -98,8 +108,8 @@ export default function HomeScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.feedTitle}>Live feed</Text>
-        <ScrollView style={styles.feedBox} showsVerticalScrollIndicator={false}>
+        <Text style={styles.feedTitle} className="ml-6">Live feed</Text>
+        <View style={styles.feedBox} className="flex-1 p-6">
           {alerts.length === 0 ? (
             <Text style={styles.feedItem}>Waiting for fresh matches and group updates...</Text>
           ) : (
@@ -109,7 +119,7 @@ export default function HomeScreen({ navigation, route }) {
               </View>
             ))
           )}
-        </ScrollView>
+        </View>
       </View>
     </ScreenLayout>
   );

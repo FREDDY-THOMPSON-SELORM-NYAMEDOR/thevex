@@ -168,6 +168,7 @@ const rideController = {
     try {
       const { origin, destination, time, userName, userEmail } = req.body;
       const user = await ensureUser(userName, userEmail);
+      console.log(user)
 
       const request = await createRideRequestRecord({
         origin,

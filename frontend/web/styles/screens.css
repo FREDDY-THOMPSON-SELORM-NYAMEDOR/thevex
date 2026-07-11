@@ -1,0 +1,28 @@
+:root{--bg-dark:#061426}
+.bg-dark{background-color:var(--bg-dark)!important}
+.px-6{padding-left:24px;padding-right:24px}
+.w-full{width:100%}
+.h-64{height:256px}
+.mb-4{margin-bottom:16px}
+.flex-row{display:flex;flex-direction:row}
+.flex-wrap{flex-wrap:wrap}
+.justify-between{justify-content:space-between}
+.ml-6{margin-left:24px}
+.flex-1{flex:1 1 0%}
+.p-6{padding:24px}
+
+html, body, #root, #app {
+	height: 100%;
+	margin: 0;
+}
+
+.app-scroll {
+	height: 100%;
+	overflow: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
+/* simple scrollbar styling */
+.app-scroll::-webkit-scrollbar { width: 12px; }
+.app-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 8px; }
+.app-scroll::-webkit-scrollbar-track { background: transparent; }

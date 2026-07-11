@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ImageBackground } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground } from 'react-native';
 import { postJson } from '../services/api';
 import ScreenLayout from '../components/ScreenLayout';
 import { getStoredUser } from '../services/user';
@@ -39,9 +39,9 @@ export default function CreateGroupScreen({ navigation, route }) {
   }
 
   return (
-    <ScreenLayout navigation={navigation} route={route}>
-      <ImageBackground source={heroImage} style={styles.background} imageStyle={styles.backgroundImage}>
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ScreenLayout navigation={navigation} route={route} className="bg-dark">
+      <ImageBackground source={heroImage} style={styles.background} imageStyle={styles.backgroundImage} className="w-full">
+        <View style={styles.container} className="px-6">
           <View style={styles.card}>
             <Text style={styles.title}>Create a live group</Text>
             <Text style={styles.subtitle}>Set your route, budget, and time, then invite fellow riders.</Text>
@@ -57,7 +57,7 @@ export default function CreateGroupScreen({ navigation, route }) {
               <Text style={styles.buttonText}>Create Group</Text>
             </TouchableOpacity>
           </View>
-        </ScrollView>
+        </View>
       </ImageBackground>
     </ScreenLayout>
   );

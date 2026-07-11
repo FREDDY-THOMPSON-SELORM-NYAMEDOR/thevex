@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ImageBackground, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ImageBackground } from 'react-native';
 import { postJson } from '../services/api';
 import ScreenLayout from '../components/ScreenLayout';
-import { getAppUser, getStoredUser } from '../services/user';
-//import { APP_USER } from '../services/user';
+import { getStoredUser } from '../services/user';
 
 const heroImage = { uri: 'https://images.unsplash.com/photo-1555375771-1f10f2359ecf?auto=format&fit=crop&w=1400&q=80' };
 
@@ -19,10 +18,8 @@ export default function FindRideScreen({ navigation, route }) {
     const gu = async()=> {
       const theUser = await getStoredUser();
       setAPP_USER(theUser); 
-      
     };
     gu();
-   
   },[])
 
   async function handleFindRide() {
@@ -52,9 +49,9 @@ export default function FindRideScreen({ navigation, route }) {
   }
 
   return (
-    <ScreenLayout navigation={navigation} route={route}>
-      <ImageBackground source={heroImage} style={styles.background} imageStyle={styles.backgroundImage}>
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ScreenLayout navigation={navigation} route={route} className="bg-dark">
+      <ImageBackground source={heroImage} style={styles.background} imageStyle={styles.backgroundImage} className="w-full">
+        <View style={styles.container} className="px-6">
           <View style={styles.card}>
             <Text style={styles.title}>Find your next ride</Text>
             <Text style={styles.subtitle}>Enter your route and catch the best shared trip instantly.</Text>
@@ -69,7 +66,7 @@ export default function FindRideScreen({ navigation, route }) {
               {loading ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Find Match</Text>}
             </TouchableOpacity>
           </View>
-        </ScrollView>
+        </View>
       </ImageBackground>
     </ScreenLayout>
   );

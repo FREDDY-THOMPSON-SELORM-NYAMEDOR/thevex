@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, ScrollView, ImageBackground } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, ImageBackground } from 'react-native';
 import { postJson, getJson } from '../services/api';
 import { onSocket } from '../services/socket';
 import ScreenLayout from '../components/ScreenLayout';
@@ -81,28 +81,28 @@ export default function PaymentScreen({ navigation, route }) {
     <ScreenLayout navigation={navigation} route={route}>
       <ImageBackground source={heroImage} style={styles.background} imageStyle={styles.backgroundImage}>
         <View style={styles.overlay} />
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Pay with Paystack</Text>
-        <View style={styles.infoCard}>
-          <Text style={styles.label}>Total</Text>
-          <Text style={styles.price}>GHS{amount}</Text>
-          <Text style={styles.label}>Your share</Text>
-          <Text style={styles.price}>GHS{share}</Text>
-        </View>
+        <View style={styles.container}>
+          <Text style={styles.title}>Pay with Paystack</Text>
+          <View style={styles.infoCard}>
+            <Text style={styles.label}>Total</Text>
+            <Text style={styles.price}>GHS{amount}</Text>
+            <Text style={styles.label}>Your share</Text>
+            <Text style={styles.price}>GHS{share}</Text>
+          </View>
 
-        <Text style={styles.note}>Use test card 4084 4084 0840 8408 with any future expiry and CVV.</Text>
-        <View style={styles.statusBox}>
-          <Text style={styles.statusLabel}>Status</Text>
-          <Text style={styles.statusText}>{statusMessage}</Text>
+          <Text style={styles.note}>Use test card 4084 4084 0840 8408 with any future expiry and CVV.</Text>
+          <View style={styles.statusBox}>
+            <Text style={styles.statusLabel}>Status</Text>
+            <Text style={styles.statusText}>{statusMessage}</Text>
+          </View>
+          <TouchableOpacity style={styles.primaryButton} onPress={handlePaystack} disabled={loading}>
+            {loading ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Start Paystack payment</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryButton} onPress={handleVerify} disabled={loading || !reference}>
+            <Text style={styles.buttonText}>{reference ? 'Verify payment' : 'Pay before verify'}</Text>
+          </TouchableOpacity>
+          {paymentUrl ? <Text style={styles.note}>Payment URL opened in your browser.</Text> : null}
         </View>
-        <TouchableOpacity style={styles.primaryButton} onPress={handlePaystack} disabled={loading}>
-          {loading ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Start Paystack payment</Text>}
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.secondaryButton} onPress={handleVerify} disabled={loading || !reference}>
-          <Text style={styles.buttonText}>{reference ? 'Verify payment' : 'Pay before verify'}</Text>
-        </TouchableOpacity>
-        {paymentUrl ? <Text style={styles.note}>Payment URL opened in your browser.</Text> : null}
-        </ScrollView>
       </ImageBackground>
     </ScreenLayout>
   );

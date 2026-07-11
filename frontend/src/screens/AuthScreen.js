@@ -9,6 +9,11 @@ export default function AuthScreen({ navigation }) {
   const [mode, setMode] = useState('signup');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -17,7 +22,17 @@ export default function AuthScreen({ navigation }) {
       setLoading(true);
       setMessage('');
       const endpoint = mode === 'signup' ? '/auth/signup' : '/auth/login';
-      const body = mode === 'signup' ? { name, email } : { email };
+      const body = mode === 'signup' ? { name, email, phone, password } : { email, password };
+      // Client-side validation for signup
+      if (mode === 'signup') {
+        if (!password || password.length < 6) {
+          throw new Error('Password must be at least 6 characters');
+        }
+        if (password !== confirmPassword) {
+          throw new Error('Passwords do not match');
+        }
+      }
+
       const result = await postJson(endpoint, body);
       console.log(result.user);
       await saveUser(result.user);
@@ -37,14 +52,42 @@ export default function AuthScreen({ navigation }) {
           <Text style={styles.subtitle}>Sign up or log in to test real rider accounts.</Text>
 
           {mode === 'signup' ? (
-            <TextInput style={styles.input} placeholder="Your name" placeholderTextColor="#8eb4c6" value={name} onChangeText={setName} />
+            <>
+              <TextInput style={styles.input} placeholder="Your name" placeholderTextColor="#8eb4c6" value={name} onChangeText={setName} />
+              <TextInput style={styles.input} placeholder="Phone number" placeholderTextColor="#8eb4c6" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+              <View>
+                <TextInput style={styles.input} placeholder="Password" placeholderTextColor="#8eb4c6" value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
+                <TouchableOpacity style={styles.showToggle} onPress={() => setShowPassword((s) => !s)}>
+                  <Text style={styles.showText}>{showPassword ? 'Hide' : 'Show'}</Text>
+                </TouchableOpacity>
+              </View>
+              <View>
+                <TextInput style={styles.input} placeholder="Confirm password" placeholderTextColor="#8eb4c6" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry={!showConfirmPassword} />
+                <TouchableOpacity style={styles.showToggle} onPress={() => setShowConfirmPassword((s) => !s)}>
+                  <Text style={styles.showText}>{showConfirmPassword ? 'Hide' : 'Show'}</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.passwordHint}>{passwordStrength(password)}</Text>
+            </>
           ) : null}
 
           <TextInput style={styles.input} placeholder="Email address" placeholderTextColor="#8eb4c6" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
+          {mode === 'login' ? (
+            <View>
+              <TextInput style={styles.input} placeholder="Password" placeholderTextColor="#8eb4c6" value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
+              <TouchableOpacity style={styles.showToggle} onPress={() => setShowPassword((s) => !s)}>
+                <Text style={styles.showText}>{showPassword ? 'Hide' : 'Show'}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
 
           {message ? <Text style={styles.message}>{message}</Text> : null}
 
-          <TouchableOpacity style={styles.primaryButton} onPress={handleSubmit} disabled={loading}>
+          <TouchableOpacity
+            style={[styles.primaryButton, (loading || !canSubmit(mode, name, email, password, confirmPassword)) && styles.disabledButton]}
+            onPress={handleSubmit}
+            disabled={loading || !canSubmit(mode, name, email, password, confirmPassword)}
+          >
             {loading ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>{mode === 'signup' ? 'Sign up' : 'Log in'}</Text>}
           </TouchableOpacity>
 
@@ -55,6 +98,23 @@ export default function AuthScreen({ navigation }) {
       </ScrollView>
     </ImageBackground>
   );
+}
+
+function passwordStrength(pw) {
+  if (!pw) return '';
+  let score = 0;
+  if (pw.length >= 6) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  if (score <= 1) return 'Weak password';
+  if (score === 2) return 'Okay password';
+  return 'Strong password';
+}
+
+function canSubmit(mode, name, email, password, confirm) {
+  if (mode === 'login') return email && password;
+  return name && email && password && confirm && password === confirm && password.length >= 6;
 }
 
 const styles = StyleSheet.create({
@@ -71,3 +131,12 @@ const styles = StyleSheet.create({
   linkButton: { marginTop: 14, alignItems: 'center' },
   linkText: { color: '#6fe7de', fontWeight: '700' }
 });
+
+const stylesExt = StyleSheet.create({
+  showToggle: { position: 'absolute', right: 18, top: 14 },
+  showText: { color: '#6fe7de', fontWeight: '700' },
+  passwordHint: { color: '#c9e5f4', marginTop: 8, fontSize: 12 },
+  disabledButton: { opacity: 0.5 }
+});
+
+Object.assign(styles, stylesExt);

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ImageBackground } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ImageBackground } from 'react-native';
 import { getJson, postJson } from '../services/api';
 import { onSocket } from '../services/socket';
 import ScreenLayout from '../components/ScreenLayout';
@@ -67,68 +67,68 @@ export default function BrowseGroupsScreen({ navigation, route }) {
   }
 
   return (
-    <ScreenLayout navigation={navigation} route={route}>
-      <View style={styles.container}>
+    <ScreenLayout navigation={navigation} route={route} className="bg-dark">
+      <View style={styles.container} className="px-6">
         <ImageBackground source={heroImage} style={styles.hero} imageStyle={styles.heroImage}>
           <View style={styles.heroOverlay} />
           <Text style={styles.heroTitle}>Live groups</Text>
           <Text style={styles.heroSubtitle}>Join or start a crew and unlock member-only ride details.</Text>
         </ImageBackground>
 
-        <ScrollView style={styles.groupList} contentContainerStyle={styles.groupContent} showsVerticalScrollIndicator={false}>
-        {groups.length === 0 ? (
-          <Text style={styles.message}>No groups available yet. Create one to get started.</Text>
-        ) : (
-          groups.map((group) => (
-            <View key={group.id} style={styles.card}>
-              <View style={styles.headerRow}>
-                <Text style={styles.groupTitle}>{group.origin} → {group.location}</Text>
-                <Text style={styles.memberPill}>{group.memberCount} riders</Text>
-              </View>
-              <Text style={styles.groupMeta}>Time: {group.time} • Budget: ₦{group.budget}</Text>
-              {group.isMember ? (
-                <View style={styles.memberBox}>
-                  <Text style={styles.memberTitle}>Group members</Text>
-                  {group.members.length === 0 ? (
-                    <Text style={styles.memberText}>You're the first rider in this group.</Text>
-                  ) : (
-                    group.members.map((member) => (
-                      <Text key={member.id} style={styles.memberText}>• {member.name}</Text>
-                    ))
-                  )}
-                </View>
-              ) : (
-                <Text style={styles.hint}>Join this group to see rider activity, member names, and booking updates.</Text>
-              )}
-              <View style={styles.cardFooter}>
-                <TouchableOpacity style={[styles.joinButton, group.isMember && styles.disabledButton]} onPress={() => handleJoin(group.id)} disabled={group.isMember}>
-                  <Text style={styles.buttonText}>{group.isMember ? 'Joined' : 'Join'}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.bookButton, !group.isMember && styles.disabledButton]} onPress={() => handleBook(group.id)} disabled={!group.isMember}>
-                  <Text style={styles.buttonText}>{group.isMember ? 'Book ride' : 'Members only'}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))
-        )}
-
-        <Text style={styles.feedTitle}>Activity</Text>
-        <View style={styles.activityBox}>
-          {activity.length === 0 ? (
-            <Text style={styles.activityText}>No events yet. Stay tuned for group activity.</Text>
+        <View style={styles.groupList}>
+          {groups.length === 0 ? (
+            <Text style={styles.message}>No groups available yet. Create one to get started.</Text>
           ) : (
-            activity.map((item, index) => (
-              <Text key={index} style={styles.activityText}>{item}</Text>
+            groups.map((group) => (
+              <View key={group.id} style={styles.card}>
+                <View style={styles.headerRow}>
+                  <Text style={styles.groupTitle}>{group.origin} → {group.location}</Text>
+                  <Text style={styles.memberPill}>{group.memberCount} riders</Text>
+                </View>
+                <Text style={styles.groupMeta}>Time: {group.time} • Budget: ₦{group.budget}</Text>
+                {group.isMember ? (
+                  <View style={styles.memberBox}>
+                    <Text style={styles.memberTitle}>Group members</Text>
+                    {group.members.length === 0 ? (
+                      <Text style={styles.memberText}>You're the first rider in this group.</Text>
+                    ) : (
+                      group.members.map((member) => (
+                        <Text key={member.id} style={styles.memberText}>• {member.name}</Text>
+                      ))
+                    )}
+                  </View>
+                ) : (
+                  <Text style={styles.hint}>Join this group to see rider activity, member names, and booking updates.</Text>
+                )}
+                <View style={styles.cardFooter}>
+                  <TouchableOpacity style={[styles.joinButton, group.isMember && styles.disabledButton]} onPress={() => handleJoin(group.id)} disabled={group.isMember}>
+                    <Text style={styles.buttonText}>{group.isMember ? 'Joined' : 'Join'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.bookButton, !group.isMember && styles.disabledButton]} onPress={() => handleBook(group.id)} disabled={!group.isMember}>
+                    <Text style={styles.buttonText}>{group.isMember ? 'Book ride' : 'Members only'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             ))
           )}
-        </View>
 
-        <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('Home')}>
-          <Text style={styles.buttonText}>Back home</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
-  </ScreenLayout>
+          <Text style={styles.feedTitle}>Activity</Text>
+          <View style={styles.activityBox}>
+            {activity.length === 0 ? (
+              <Text style={styles.activityText}>No events yet. Stay tuned for group activity.</Text>
+            ) : (
+              activity.map((item, index) => (
+                <Text key={index} style={styles.activityText}>{item}</Text>
+              ))
+            )}
+          </View>
+
+          <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.navigate('Home')}>
+            <Text style={styles.buttonText}>Back home</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </ScreenLayout>
   );
 }
 

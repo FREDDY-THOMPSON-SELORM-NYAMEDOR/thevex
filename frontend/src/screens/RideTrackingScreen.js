@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ImageBackground, RefreshControl, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ImageBackground, RefreshControl, Alert } from 'react-native';
 import { getJson, postJson } from '../services/api';
 import { getStoredUser } from '../services/user';
 import { onSocket } from '../services/socket';
@@ -92,19 +92,24 @@ export default function RideTrackingScreen({ navigation, route }) {
   }
 
   return (
-    <ScreenLayout navigation={navigation} route={route}>
+    <ScreenLayout
+      navigation={navigation}
+      route={route}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.container}
+    >
       <ImageBackground source={heroImage} style={styles.background} imageStyle={styles.backgroundImage}>
         <View style={styles.overlay} />
-        <ScrollView style={styles.container} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-          <Text style={styles.title}>Active Rides</Text>
+        <Text style={styles.title}>Active Rides</Text>
 
-          {activeRides.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>No active confirmed rides</Text>
-              <Text style={styles.emptySubtext}>Find and match a ride to see it here</Text>
-            </View>
-          ) : (
-            activeRides.map((ride) => {
+        {activeRides.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>No active confirmed rides</Text>
+            <Text style={styles.emptySubtext}>Find and match a ride to see it here</Text>
+          </View>
+        ) : (
+          activeRides.map((ride) => {
               const isUser1 = ride.user1_id === currentUser?.id;
               const otherUserId = isUser1 ? ride.user2_id : ride.user1_id;
               const userConfirmed = isUser1 ? ride.user1_confirmed : ride.user2_confirmed;
@@ -167,7 +172,6 @@ export default function RideTrackingScreen({ navigation, route }) {
               );
             })
           )}
-        </ScrollView>
       </ImageBackground>
     </ScreenLayout>
   );
@@ -177,7 +181,7 @@ const styles = StyleSheet.create({
   background: { flex: 1 },
   backgroundImage: { opacity: 0.7 },
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(4,20,44,0.5)' },
-  container: { flex: 1, padding: 24 },
+  container: { padding: 24 },
   title: { color: '#21d3c7', fontSize: 28, fontWeight: '900', marginBottom: 20 },
   loadingText: { color: '#c9e5f4', fontSize: 16, textAlign: 'center', marginTop: 40 },
   emptyState: { alignItems: 'center', marginTop: 60 },

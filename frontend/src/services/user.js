@@ -17,15 +17,16 @@ export async function clearStoredUser() {
 }
 
 export async function logoutUser() {
+  console.log('logout')
+  await clearStoredUser();
+
   try {
     await postJson('/auth/logout', {});
-    await clearStoredUser();
-    return true;
   } catch (error) {
-    console.error('Logout error:', error);
-    await clearStoredUser();
-    return true;
+    console.warn('Logout network error:', error.message || error);
   }
+
+  return true;
 }
 
 export async function getAppUser() {

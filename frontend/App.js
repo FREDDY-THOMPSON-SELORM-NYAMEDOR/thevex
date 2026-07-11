@@ -3,6 +3,8 @@ import React, { useEffect, useRef } from 'react';
 import AppNavigator from './src/navigation/AppNavigator';
 import { joinUser, socket, onSocketConnect } from './src/services/socket';
 import { getStoredUser } from './src/services/user';
+// Web-only styles for responsive layout
+import './web/styles/screens.css';
 
 export default function App() {
   const userIdRef = useRef(null);
