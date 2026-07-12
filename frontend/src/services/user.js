@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { postJson } from './api';
+import { stopLiveLocationTracking } from './liveLocation';
 
 const USER_KEY = 'vex-current-user';
 
@@ -18,6 +19,7 @@ export async function clearStoredUser() {
 
 export async function logoutUser() {
   console.log('logout')
+  await stopLiveLocationTracking();
   await clearStoredUser();
 
   try {

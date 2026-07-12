@@ -4,6 +4,7 @@ import { getJson, postJson } from '../services/api';
 import { getStoredUser } from '../services/user';
 import { onSocket } from '../services/socket';
 import ScreenLayout from '../components/ScreenLayout';
+import LiveLocationMap from '../components/LiveLocationMap';
 
 const heroImage = { uri: 'https://images.unsplash.com/photo-1519914213166-db6e2b9b0b6b?auto=format&fit=crop&w=1400&q=80' };
 
@@ -31,7 +32,19 @@ export default function RideTrackingScreen({ navigation, route }) {
       loadRides(currentUser.id);
     });
 
-    return () => cleanup();
+    const locationCleanup = onSocket('matchLocationUpdate', () => {
+      loadRides(currentUser.id);
+    });
+
+    const userLocationCleanup = onSocket('userLocationUpdated', () => {
+      loadRides(currentUser.id);
+    });
+
+    return () => {
+      cleanup();
+      locationCleanup();
+      userLocationCleanup();
+    };
   }, [currentUser]);
 
   async function loadRides(userId) {
@@ -102,6 +115,18 @@ export default function RideTrackingScreen({ navigation, route }) {
       <ImageBackground source={heroImage} style={styles.background} imageStyle={styles.backgroundImage}>
         <View style={styles.overlay} />
         <Text style={styles.title}>Active Rides</Text>
+        {activeRides[0]?.liveLocationState ? (
+          <LiveLocationMap
+            liveLocationState={activeRides[0].liveLocationState}
+            title="Live ride map"
+            height={260}
+          />
+        ) : (
+          <View style={styles.mapFallback}>
+            <Text style={styles.mapFallbackTitle}>Live map</Text>
+            <Text style={styles.mapFallbackText}>Waiting for GPS data from the matched riders.</Text>
+          </View>
+        )}
 
         {activeRides.length === 0 ? (
           <View style={styles.emptyState}>
@@ -211,5 +236,15 @@ const styles = StyleSheet.create({
   confirmButton: { backgroundColor: '#21d3c7', paddingVertical: 12, borderRadius: 14, alignItems: 'center', marginTop: 12 },
   confirmButtonText: { color: '#061426', fontWeight: '800', fontSize: 14 },
   warningBox: { backgroundColor: 'rgba(255, 122, 26, 0.15)', borderRadius: 12, padding: 12, marginTop: 12, borderWidth: 1, borderColor: 'rgba(255, 122, 26, 0.3)' },
-  warningText: { color: '#ff7a1a', fontSize: 12, fontWeight: '600' }
+  warningText: { color: '#ff7a1a', fontSize: 12, fontWeight: '600' },
+  mapFallback: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 22,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(33,211,199,0.18)',
+    marginBottom: 16
+  },
+  mapFallbackTitle: { color: '#d4f3fb', fontWeight: '800', marginBottom: 6 },
+  mapFallbackText: { color: '#c9e5f4', lineHeight: 20 }
 });

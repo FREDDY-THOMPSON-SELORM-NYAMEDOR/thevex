@@ -7,6 +7,9 @@ const User = sequelize.define('User', {
   email: { type: DataTypes.STRING, allowNull: false, unique: true },
   phone: { type: DataTypes.STRING, allowNull: true },
   password_hash: { type: DataTypes.STRING, allowNull: true },
+  current_latitude: { type: DataTypes.FLOAT, allowNull: true },
+  current_longitude: { type: DataTypes.FLOAT, allowNull: true },
+  location_updated_at: { type: DataTypes.DATE, allowNull: true },
   rating: { type: DataTypes.FLOAT, defaultValue: 5.0 }
 }, {
   tableName: 'users',

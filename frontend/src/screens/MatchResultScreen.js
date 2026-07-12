@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ImageBackground } from 'react-native';
+import { getJson } from '../services/api';
 import { onSocket } from '../services/socket';
 import ScreenLayout from '../components/ScreenLayout';
-import { getStoredUser } from '../services/user';
+import LiveLocationMap from '../components/LiveLocationMap';
 
 const heroImage = { uri: 'https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1400&q=80' };
 
@@ -13,16 +14,32 @@ export default function MatchResultScreen({ navigation, route }) {
   const [activeRequest, setActiveRequest] = useState(request);
 
   useEffect(() => {
-     console.log('Match about found:')
-    const cleanup = onSocket('matchFound', ({ matchId, request, counterParty }) => {
-      console.log('Match found:', matchId, request, counterParty);
-      setCurrentMatch({ id: matchId });
-      setActiveRequest(request); 
+    const cleanup = onSocket('matchFound', ({ matchId, request, counterParty, liveLocationState }) => {
+      setCurrentMatch({ id: matchId, liveLocationState });
+      setActiveRequest(request);
       setStatus('Live match found!');
     });
 
     return cleanup;
   }, []);
+
+  useEffect(() => {
+    async function loadLiveState() {
+      if (!currentMatch?.id || currentMatch?.liveLocationState) return;
+      try {
+        const result = await getJson(`/match/${currentMatch.id}/live`);
+        if (result.liveLocationState) {
+          setCurrentMatch((prev) => ({ ...prev, liveLocationState: result.liveLocationState }));
+        }
+      } catch (error) {
+        console.warn('Could not load live match state:', error.message || error);
+      }
+    }
+
+    loadLiveState();
+  }, [currentMatch?.id, currentMatch?.liveLocationState]);
+
+  const liveLocationState = currentMatch?.liveLocationState;
 
   return (
     <ScreenLayout navigation={navigation} route={route}>
@@ -30,6 +47,7 @@ export default function MatchResultScreen({ navigation, route }) {
       <View style={styles.overlay} />
       <View style={styles.container}>
         <Text style={styles.title}>Ride match</Text>
+        <LiveLocationMap liveLocationState={liveLocationState} title="Your live match map" height={220} />
         <View style={styles.card}>
           <Text style={styles.cardLabel}>Origin</Text>
           <Text style={styles.cardText}>{origin || activeRequest?.origin || request?.origin || 'Downtown'}</Text>
@@ -44,12 +62,16 @@ export default function MatchResultScreen({ navigation, route }) {
         </View>
         <Text style={styles.matchBadge}>{currentMatch ? `Match ID ${currentMatch.id}` : 'Waiting for the best match...'}</Text>
         <Text style={styles.status}>{status}</Text>
+        {liveLocationState?.pickupSummary ? <Text style={styles.liveNote}>{liveLocationState.pickupSummary}</Text> : null}
         <TouchableOpacity
           style={[styles.primaryButton, !currentMatch && styles.disabledButton]}
-          onPress={() => navigation.navigate('Payment', { amount: 24, matchId: currentMatch?.id })}
+          onPress={() => navigation.navigate('Payment', { amount: 24, matchId: currentMatch?.id, liveLocationState })}
           disabled={!currentMatch}
         >
           <Text style={styles.buttonText}>{currentMatch ? 'Continue to payment' : 'Waiting...'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('RideTracking')}>
+          <Text style={styles.secondaryText}>Open live tracking</Text>
         </TouchableOpacity>
       </View>
       </ImageBackground>
@@ -70,5 +92,8 @@ const styles = StyleSheet.create({
   status: { color: '#cfe8f5', fontSize: 15, marginBottom: 22, textAlign: 'center' },
   primaryButton: { backgroundColor: '#ff7a1a', padding: 16, borderRadius: 20, alignItems: 'center' },
   disabledButton: { opacity: 0.6 },
-  buttonText: { color: 'white', fontWeight: '800', fontSize: 16 }
+  buttonText: { color: 'white', fontWeight: '800', fontSize: 16 },
+  liveNote: { color: '#9ddae0', marginBottom: 18, textAlign: 'center', lineHeight: 20 },
+  secondaryButton: { borderColor: '#21d3c7', borderWidth: 1, padding: 14, borderRadius: 20, alignItems: 'center', marginTop: 12 },
+  secondaryText: { color: '#21d3c7', fontWeight: '800', fontSize: 15 }
 });

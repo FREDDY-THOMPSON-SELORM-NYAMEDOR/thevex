@@ -1,5 +1,6 @@
-const { Match } = require('../models');
+const { Match, User } = require('../models');
 const { getDbReady, getMemoryStore } = require('../utils/helpers');
+const { buildLiveMatchState } = require('../utils/liveLocation');
 
 let io;
 
@@ -9,6 +10,22 @@ function setIO(socketIO) {
 
 function emitToUser(userId, event, payload) {
   if (io) io.to(`user:${userId}`).emit(event, payload);
+}
+
+async function getLiveMatchState(match) {
+  if (!match) return null;
+
+  const dbReady = getDbReady();
+  const memoryStore = getMemoryStore();
+
+  const user1 = dbReady
+    ? await User.findByPk(match.user1_id)
+    : memoryStore.users.find((entry) => entry.id === match.user1_id);
+  const user2 = dbReady
+    ? await User.findByPk(match.user2_id)
+    : memoryStore.users.find((entry) => entry.id === match.user2_id);
+
+  return buildLiveMatchState({ match, user1, user2 });
 }
 
 function markMatchConfirmedIfPaid(match) {
@@ -89,10 +106,17 @@ const matchController = {
             ]
           }
         });
+        rides = await Promise.all(rides.map(async (ride) => ({
+          ...(ride.get ? ride.get({ plain: true }) : ride),
+          liveLocationState: await getLiveMatchState(ride)
+        })));
       } else {
-        rides = memoryStore.matches.filter((m) => 
-          m.status === 'confirmed' && (m.user1_id === numUserId || m.user2_id === numUserId)
-        );
+        rides = await Promise.all(memoryStore.matches
+          .filter((m) => m.status === 'confirmed' && (m.user1_id === numUserId || m.user2_id === numUserId))
+          .map(async (ride) => ({
+            ...ride,
+            liveLocationState: await getLiveMatchState(ride)
+          })));
       }
 
       res.json({ success: true, rides });

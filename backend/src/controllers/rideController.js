@@ -1,5 +1,6 @@
-const { RideRequest, Match } = require('../models');
+const { RideRequest, Match, User } = require('../models');
 const { ensureUser, parseRideTime, getDbReady, getMemoryStore } = require('../utils/helpers');
+const { buildLiveMatchState } = require('../utils/liveLocation');
 const { Op } = require('sequelize');
 
 let io;
@@ -14,6 +15,74 @@ function emitToUser(userId, event, payload) {
 
 function broadcast(event, payload) {
   if (io) io.emit(event, payload);
+}
+
+async function getUserRecord(userId) {
+  const dbReady = getDbReady();
+  const memoryStore = getMemoryStore();
+
+  if (dbReady) {
+    return User.findByPk(userId);
+  }
+
+  return memoryStore.users.find((entry) => entry.id === Number(userId)) || null;
+}
+
+async function getMatchRecord(matchId) {
+  const dbReady = getDbReady();
+  const memoryStore = getMemoryStore();
+
+  if (dbReady) {
+    return Match.findByPk(matchId);
+  }
+
+  return memoryStore.matches.find((entry) => entry.id === Number(matchId)) || null;
+}
+
+async function getActiveMatchesForUser(userId) {
+  const dbReady = getDbReady();
+  const memoryStore = getMemoryStore();
+  const numericUserId = Number(userId);
+
+  if (dbReady) {
+    return Match.findAll({
+      where: {
+        status: { [Op.in]: ['pending', 'confirmed'] },
+        [Op.or]: [
+          { user1_id: numericUserId },
+          { user2_id: numericUserId }
+        ]
+      }
+    });
+  }
+
+  return memoryStore.matches.filter((entry) =>
+    ['pending', 'confirmed'].includes(entry.status) &&
+    (entry.user1_id === numericUserId || entry.user2_id === numericUserId)
+  );
+}
+
+async function getLiveMatchState(match) {
+  if (!match) return null;
+
+  const user1 = await getUserRecord(match.user1_id);
+  const user2 = await getUserRecord(match.user2_id);
+  return buildLiveMatchState({
+    match,
+    user1,
+    user2
+  });
+}
+
+async function emitLiveMatchState(match, reason = 'locationUpdate') {
+  if (!match) return null;
+
+  const liveLocationState = await getLiveMatchState(match);
+  if (!liveLocationState) return null;
+
+  emitToUser(match.user1_id, 'matchLocationUpdate', { reason, ...liveLocationState });
+  emitToUser(match.user2_id, 'matchLocationUpdate', { reason, ...liveLocationState });
+  return liveLocationState;
 }
 
 async function createRideRequestRecord(payload) {
@@ -75,6 +144,7 @@ async function findMatchingRide(request) {
       ride_time: request.time
     });
     await RideRequest.update({ status: 'matched' }, { where: { id: [request.id, match.id] } });
+    const liveLocationState = await getLiveMatchState(createdMatch);
 
     const matchPayload = {
       matchId: createdMatch.id,
@@ -87,13 +157,15 @@ async function findMatchingRide(request) {
     emitToUser(request.user_id, 'matchFound', {
       matchId: createdMatch.id,
       request,              // their own request
-      counterParty: match   // the other rider
+      counterParty: match,  // the other rider
+      liveLocationState
     });
 
     emitToUser(match.user_id, 'matchFound', {
       matchId: createdMatch.id,
       request: match,       // their own request
-      counterParty: request // the other rider
+      counterParty: request, // the other rider
+      liveLocationState
     });
     broadcast('rideMatched', { matchId: createdMatch.id, origin: request.origin, destination: request.destination });
     return createdMatch;
@@ -150,13 +222,15 @@ async function findMatchingRide(request) {
   emitToUser(request.user_id, 'matchFound', {
     matchId: createdMatch.id,
     request,
-    counterParty: match
+    counterParty: match,
+    liveLocationState: await getLiveMatchState(createdMatch)
   });
 
   emitToUser(match.user_id, 'matchFound', {
     matchId: createdMatch.id,
     request: match,
-    counterParty: request
+    counterParty: request,
+    liveLocationState: await getLiveMatchState(createdMatch)
   });
   
   broadcast('rideMatched', { matchId: createdMatch.id, origin: request.origin, destination: request.destination });
@@ -217,6 +291,77 @@ const rideController = {
       broadcast('rideBookedGlobal', { matchId, ride: rideDetails });
 
       res.json({ success: true, ride: rideDetails });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+  async updateLocation(req, res) {
+    try {
+      const dbReady = getDbReady();
+      const memoryStore = getMemoryStore();
+      const { userId, latitude, longitude } = req.body;
+
+      if (!userId || latitude === undefined || longitude === undefined) {
+        return res.status(400).json({ success: false, message: 'userId, latitude, and longitude are required' });
+      }
+
+      const numericLatitude = Number(latitude);
+      const numericLongitude = Number(longitude);
+
+      if (!Number.isFinite(numericLatitude) || !Number.isFinite(numericLongitude)) {
+        return res.status(400).json({ success: false, message: 'latitude and longitude must be valid numbers' });
+      }
+
+      if (dbReady) {
+        const user = await User.findByPk(userId);
+        if (!user) {
+          return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        user.current_latitude = numericLatitude;
+        user.current_longitude = numericLongitude;
+        user.location_updated_at = new Date();
+        await user.save();
+      } else {
+        const user = memoryStore.users.find((entry) => entry.id === Number(userId));
+        if (!user) {
+          return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        user.current_latitude = numericLatitude;
+        user.current_longitude = numericLongitude;
+        user.location_updated_at = new Date();
+      }
+
+      const matches = await getActiveMatchesForUser(userId);
+      for (const match of matches) {
+        await emitLiveMatchState(match, 'locationUpdate');
+      }
+
+      emitToUser(userId, 'userLocationUpdated', {
+        userId: Number(userId),
+        latitude: numericLatitude,
+        longitude: numericLongitude,
+        updatedAt: new Date()
+      });
+
+      res.json({ success: true, location: { latitude: numericLatitude, longitude: numericLongitude } });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+  async getMatchLiveState(req, res) {
+    try {
+      const { matchId } = req.params;
+      const match = await getMatchRecord(matchId);
+      if (!match) {
+        return res.status(404).json({ success: false, message: 'Match not found' });
+      }
+
+      const liveLocationState = await getLiveMatchState(match);
+      res.json({ success: true, liveLocationState });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
