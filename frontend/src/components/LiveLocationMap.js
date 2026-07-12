@@ -1,6 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
+import { View, Text, StyleSheet, Platform } from 'react-native';
+
+let MapView = null;
+let Marker = null;
+let Polyline = null;
+
+if (Platform.OS !== 'web') {
+  ({ default: MapView, Marker, Polyline } = require('react-native-maps'));
+}
 
 function toRegion(location) {
   if (!location) return null;
@@ -22,8 +29,9 @@ export default function LiveLocationMap({ liveLocationState, height = 240, title
   const carLocation = liveLocationState?.carLocation;
   const focusLocation = carLocation || user1Location || user2Location;
   const region = toRegion(focusLocation);
+  const isWeb = Platform.OS === 'web';
 
-  if (!region || (!isValidLocation(user1Location) && !isValidLocation(user2Location) && !isValidLocation(carLocation))) {
+  if (isWeb || !region || (!isValidLocation(user1Location) && !isValidLocation(user2Location) && !isValidLocation(carLocation))) {
     return (
       <View style={[styles.fallbackCard, { minHeight: height }]}>
         <Text style={styles.title}>{title}</Text>
