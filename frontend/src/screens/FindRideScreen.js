@@ -56,8 +56,11 @@ export default function FindRideScreen({ navigation, route }) {
             <Text style={styles.title}>Find your next ride</Text>
             <Text style={styles.subtitle}>Enter your route and catch the best shared trip instantly.</Text>
 
+            <Text style={styles.fieldLabel}>Origin</Text>
             <TextInput style={styles.input} placeholder="Origin" placeholderTextColor="#9bb1ca" value={origin} onChangeText={setOrigin} />
+            <Text style={styles.fieldLabel}>Destination</Text>
             <TextInput style={styles.input} placeholder="Destination" placeholderTextColor="#9bb1ca" value={destination} onChangeText={setDestination} />
+            <Text style={styles.fieldLabel}>Time</Text>
             <TextInput style={styles.input} placeholder="Time (e.g. 7:30 PM)" placeholderTextColor="#9bb1ca" value={time} onChangeText={setTime} />
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -79,6 +82,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: 'rgba(8, 25, 54, 0.94)', borderRadius: 28, padding: 24, borderWidth: 1, borderColor: 'rgba(255,122,26,0.18)' },
   title: { fontSize: 32, fontWeight: '900', color: '#21d3c7', marginBottom: 8 },
   subtitle: { color: '#c9e5f4', marginBottom: 24, lineHeight: 22 },
+  fieldLabel: { color: '#c9e5f4', fontSize: 13, fontWeight: '700', marginBottom: 8, marginTop: 4 },
   input: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 18, padding: 16, marginBottom: 16, color: 'white', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   error: { color: '#ff9a5f', marginBottom: 12, fontWeight: '700' },
   primaryButton: { backgroundColor: '#ff7a1a', padding: 16, borderRadius: 18, marginTop: 8 },

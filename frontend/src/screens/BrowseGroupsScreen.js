@@ -85,7 +85,7 @@ export default function BrowseGroupsScreen({ navigation, route }) {
                   <Text style={styles.groupTitle}>{group.origin} → {group.location}</Text>
                   <Text style={styles.memberPill}>{group.memberCount} riders</Text>
                 </View>
-                <Text style={styles.groupMeta}>Time: {group.time} • Budget: GHS{group.budget}</Text>
+                <Text style={styles.groupMeta}>Time: {group.time} • Budget: ₦{group.budget}</Text>
                 {group.isMember ? (
                   <View style={styles.memberBox}>
                     <Text style={styles.memberTitle}>Group members</Text>
@@ -101,13 +101,14 @@ export default function BrowseGroupsScreen({ navigation, route }) {
                   <Text style={styles.hint}>Join this group to see rider activity, member names, and booking updates.</Text>
                 )}
                 <View style={styles.cardFooter}>
-                  <TouchableOpacity style={[styles.joinButton, group.isMember && styles.disabledButton]} onPress={() => handleJoin(group.id)} disabled={group.isMember}>
-                    <Text style={styles.buttonText}>{group.isMember ? 'Joined' : 'Join'}</Text>
+                  <TouchableOpacity style={[styles.joinButton, (!group.canJoin || group.isMember) && styles.disabledButton]} onPress={() => handleJoin(group.id)} disabled={!group.canJoin || group.isMember}>
+                    <Text style={styles.buttonText}>{group.isMember ? 'Joined' : group.canJoin ? 'Join' : 'Closed'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.bookButton, !group.isMember && styles.disabledButton]} onPress={() => handleBook(group.id)} disabled={!group.isMember}>
                     <Text style={styles.buttonText}>{group.isMember ? 'Book ride' : 'Members only'}</Text>
                   </TouchableOpacity>
                 </View>
+                {!group.canJoin && !group.isMember ? <Text style={styles.closedText}>Joining is closed for this group.</Text> : null}
               </View>
             ))
           )}
@@ -158,5 +159,6 @@ const styles = StyleSheet.create({
   buttonText: { color: 'white', fontWeight: '800', fontSize: 15 },
   feedTitle: { color: '#cef1ff', fontSize: 16, fontWeight: '700', marginBottom: 12 },
   activityBox: { backgroundColor: '#0a233d', borderRadius: 18, padding: 18, marginBottom: 16 },
-  activityText: { color: '#b9e4fb', marginBottom: 10, lineHeight: 20 }
+  activityText: { color: '#b9e4fb', marginBottom: 10, lineHeight: 20 },
+  closedText: { color: '#ffb36b', marginTop: 8, fontWeight: '700' }
 });
