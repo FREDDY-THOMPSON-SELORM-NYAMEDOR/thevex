@@ -108,14 +108,10 @@ export default function BrowseGroupsScreen({ navigation, route }) {
                   <Text style={styles.groupTitle}>{group.origin} → {group.location}</Text>
                   <Text style={styles.memberPill}>{group.memberCount} riders</Text>
                 </View>
-<<<<<<< HEAD
                 <Text style={styles.groupMeta}>Date: {group.schedule_date} • Time: {group.time}</Text>
                 <Text style={styles.groupMeta}>Join by: {group.join_deadline ? new Date(group.join_deadline).toLocaleString() : 'No deadline set'}</Text>
                 <Text style={styles.groupMeta}>Budget: GHS{group.budget}</Text>
                 <Text style={styles.groupMeta}>Max members: {group.max_members || 'N/A'} • Share: GHS{group.paymentAmount || 0}</Text>
-=======
-                <Text style={styles.groupMeta}>Time: {group.time} • Budget: ₦{group.budget}</Text>
->>>>>>> c3165aae94a1263b0012dfdddde1d6051eb11a85
                 {group.isMember ? (
                   <View style={styles.memberBox}>
                     <Text style={styles.memberTitle}>Group members</Text>
