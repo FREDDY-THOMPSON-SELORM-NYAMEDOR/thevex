@@ -13,6 +13,7 @@ export default function CreateGroupScreen({ navigation, route }) {
   const [time, setTime] = useState('7:00 PM');
   const [joinDeadline, setJoinDeadline] = useState('2026-07-19T18:00');
   const [budget, setBudget] = useState('30');
+  const [maxMembers, setMaxMembers] = useState('4');
   const [message, setMessage] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
 
@@ -31,6 +32,7 @@ export default function CreateGroupScreen({ navigation, route }) {
         origin: origin.trim(),
         scheduleDate: scheduleDate.trim(),
         budget: Number(budget),
+        maxMembers: Number(maxMembers),
         time: time.trim(),
         joinDeadline: joinDeadline.trim(),
         split_rules: 'Even split',
@@ -62,6 +64,8 @@ export default function CreateGroupScreen({ navigation, route }) {
             <TextInput style={styles.input} placeholder="Join deadline (YYYY-MM-DDTHH:MM)" placeholderTextColor="#9bb1ca" value={joinDeadline} onChangeText={setJoinDeadline} />
             <Text style={styles.fieldLabel}>Budget</Text>
             <TextInput style={styles.input} placeholder="Budget" placeholderTextColor="#9bb1ca" value={budget} onChangeText={setBudget} keyboardType="numeric" />
+            <Text style={styles.fieldLabel}>Max Members</Text>
+            <TextInput style={styles.input} placeholder="Max members" placeholderTextColor="#9bb1ca" value={maxMembers} onChangeText={setMaxMembers} keyboardType="numeric" />
 
             {message ? <Text style={styles.message}>{message}</Text> : null}
 

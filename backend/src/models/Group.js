@@ -6,6 +6,7 @@ const Group = sequelize.define('Group', {
   location: { type: DataTypes.STRING, allowNull: false },
   origin: { type: DataTypes.STRING, allowNull: false },
   budget: { type: DataTypes.INTEGER, allowNull: false },
+  max_members: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 4 },
   schedule_date: { type: DataTypes.DATEONLY, allowNull: false },
   time: { type: DataTypes.STRING, allowNull: false },
   join_deadline: { type: DataTypes.DATE, allowNull: false },

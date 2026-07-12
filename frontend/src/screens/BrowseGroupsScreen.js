@@ -38,23 +38,46 @@ export default function BrowseGroupsScreen({ navigation, route }) {
       setGroups((prev) => [group, ...prev]);
       setActivity((prev) => [`New group created: ${group.origin} → ${group.location}`, ...prev].slice(0, 4));
     });
-    const cleanup2 = onSocket('groupJoined', ({ groupId }) => {
+    const cleanup2 = onSocket('groupJoined', ({ groupId, group }) => {
+      if (group) {
+        setGroups((prev) => prev.map((entry) => (entry.id === groupId ? group : entry)));
+      }
       setActivity((prev) => [`A rider joined group ${groupId}`, ...prev].slice(0, 4));
+    });
+    const cleanup4 = onSocket('groupMemberVerified', ({ groupId }) => {
+      setActivity((prev) => [`Group member verified for group ${groupId}`, ...prev].slice(0, 4));
+      loadGroups();
     });
     const cleanup3 = onSocket('groupRideBooked', ({ ride }) => {
       setActivity((prev) => [`Group ride booked: ${ride.car} in ${ride.eta}`, ...prev].slice(0, 4));
     });
-    return () => { cleanup1(); cleanup2(); cleanup3(); };
+    return () => { cleanup1(); cleanup2(); cleanup3(); cleanup4(); };
   }, [currentUser]);
 
   async function handleJoin(groupId) {
     try {
       const result = await postJson('/joinGroup', { groupId, userId: currentUser?.id });
       setGroups((prev) => prev.map((group) => (group.id === groupId ? result.group : group)));
-      setActivity((prev) => [`Joined group ${groupId}`, ...prev].slice(0, 4));
+      setActivity((prev) => [`Joined group ${groupId}. Pay GHS${result.paymentAmount} to move out of probation.`, ...prev].slice(0, 4));
     } catch (error) {
       setActivity((prev) => [`Join failed: ${error.message}`, ...prev].slice(0, 4));
     }
+  }
+
+  async function handlePay(group) {
+    const member = group.members?.find((entry) => entry.userId === currentUser?.id);
+    if (!member) {
+      setActivity((prev) => [`No probation member record found for group ${group.id}`, ...prev].slice(0, 4));
+      return;
+    }
+
+    navigation.navigate('Payment', {
+      paymentType: 'group',
+      groupId: group.id,
+      groupMemberId: member.membershipId,
+      amount: group.paymentAmount || 0,
+      groupTitle: `${group.origin} → ${group.location}`
+    });
   }
 
   async function handleBook(groupId) {
@@ -88,6 +111,7 @@ export default function BrowseGroupsScreen({ navigation, route }) {
                 <Text style={styles.groupMeta}>Date: {group.schedule_date} • Time: {group.time}</Text>
                 <Text style={styles.groupMeta}>Join by: {group.join_deadline ? new Date(group.join_deadline).toLocaleString() : 'No deadline set'}</Text>
                 <Text style={styles.groupMeta}>Budget: GHS{group.budget}</Text>
+                <Text style={styles.groupMeta}>Max members: {group.max_members || 'N/A'} • Share: GHS{group.paymentAmount || 0}</Text>
                 {group.isMember ? (
                   <View style={styles.memberBox}>
                     <Text style={styles.memberTitle}>Group members</Text>
@@ -95,7 +119,7 @@ export default function BrowseGroupsScreen({ navigation, route }) {
                       <Text style={styles.memberText}>You're the first rider in this group.</Text>
                     ) : (
                       group.members.map((member) => (
-                        <Text key={member.id} style={styles.memberText}>• {member.name}</Text>
+                        <Text key={member.membershipId || member.id} style={styles.memberText}>• {member.name} {member.status ? `(${member.status})` : ''}</Text>
                       ))
                     )}
                   </View>
@@ -106,10 +130,19 @@ export default function BrowseGroupsScreen({ navigation, route }) {
                   <TouchableOpacity style={[styles.joinButton, (!group.canJoin || group.isMember) && styles.disabledButton]} onPress={() => handleJoin(group.id)} disabled={!group.canJoin || group.isMember}>
                     <Text style={styles.buttonText}>{group.isMember ? 'Joined' : group.canJoin ? 'Join' : 'Closed'}</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.bookButton, !group.isMember && styles.disabledButton]} onPress={() => handleBook(group.id)} disabled={!group.isMember}>
-                    <Text style={styles.buttonText}>{group.isMember ? 'Book ride' : 'Members only'}</Text>
-                  </TouchableOpacity>
+                  {group.isMember && group.members?.find((member) => member.userId === currentUser?.id)?.status === 'probation' ? (
+                    <TouchableOpacity style={styles.bookButton} onPress={() => handlePay(group)}>
+                      <Text style={styles.buttonText}>Pay GHS{group.paymentAmount || 0}</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity style={[styles.bookButton, !group.isMember && styles.disabledButton]} onPress={() => handleBook(group.id)} disabled={!group.isMember}>
+                      <Text style={styles.buttonText}>{group.isMember ? 'Book ride' : 'Members only'}</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
+                {group.isMember && group.members?.find((member) => member.userId === currentUser?.id)?.status === 'verified' ? (
+                  <Text style={styles.closedText}>Your membership is verified.</Text>
+                ) : null}
                 {!group.canJoin && !group.isMember ? <Text style={styles.closedText}>Joining is closed for this group.</Text> : null}
               </View>
             ))

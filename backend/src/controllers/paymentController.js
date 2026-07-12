@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { Payment, Match } = require('../models');
+const { Payment, Match, GroupMember, Group } = require('../models');
 const { findUserById, getDbReady, getMemoryStore } = require('../utils/helpers');
 
 let io;
@@ -45,23 +45,32 @@ async function createPaymentRecord(payload) {
   return payment;
 }
 
-async function initializePaystackTransaction(matchId, userId, amount) {
+function getGroupShareAmount(group) {
+  const budget = Number(group?.budget || 0);
+  const maxMembers = Number(group?.max_members || 1) || 1;
+  return Math.max(1, Math.round(budget / maxMembers));
+}
+
+async function initializePaystackTransaction({ paymentType, matchId, groupId, groupMemberId, userId, amount }) {
   const payer = await findUserById(userId);
   
   if (!payer) {
     throw new Error(`User with ID ${userId} not found`);
   }
-  
-  const share = Math.round(amount / 2);
+
+  const share = paymentType === 'group' ? Number(amount) : Math.round(amount / 2);
+  if (!Number.isFinite(share) || share < 1) {
+    throw new Error('Payment amount must be a positive number');
+  }
 
   const paystackResponse = await axios.post(
     'https://api.paystack.co/transaction/initialize',
     {
       email: payer.email || 'demo@vex.app',
-      amount: amount * 100,
+      amount: share * 100,
       currency: 'GHS',
       callback_url: PAYSTACK_CALLBACK_URL,
-      metadata: { matchId, userId }
+      metadata: { paymentType, matchId, groupId, groupMemberId, userId }
     },
     {
       headers: {
@@ -74,7 +83,10 @@ async function initializePaystackTransaction(matchId, userId, amount) {
   const { authorization_url, reference } = paystackResponse.data.data;
 
   const paymentRecord = await createPaymentRecord({
-    match_id: matchId,
+    match_id: paymentType === 'match' ? matchId : null,
+    group_id: paymentType === 'group' ? groupId : null,
+    group_member_id: paymentType === 'group' ? groupMemberId : null,
+    payment_type: paymentType,
     user_id: userId,
     amount: share,
     status: 'pending',
@@ -111,43 +123,101 @@ async function verifyPaystackReference(reference) {
   if (dbReady) {
     await payment.save();
     
-    // Update match payment status
-    const match = await Match.findByPk(payment.match_id);
-    if (match) {
-      if (match.user1_id === payment.user_id) {
-        match.user1_payment_status = status;
-      } else if (match.user2_id === payment.user_id) {
-        match.user2_payment_status = status;
+    if (payment.payment_type === 'group' || payment.group_member_id) {
+      const membership = await GroupMember.findByPk(payment.group_member_id);
+      if (membership) {
+        membership.payment_status = status;
+        if (status === 'success') {
+          membership.status = 'verified';
+        }
+        membership.payment_reference = payment.payment_reference;
+        membership.payment_url = payment.payment_url;
+        await membership.save();
+
+        const group = await Group.findByPk(membership.group_id);
+        emitToUser(payment.user_id, 'groupPaymentStatus', {
+          groupId: membership.group_id,
+          groupMemberId: membership.id,
+          status,
+          membership,
+          paymentAmount: group ? getGroupShareAmount(group) : payment.amount
+        });
+
+        if (status === 'success') {
+          emitToUser(payment.user_id, 'groupMemberVerified', {
+            groupId: membership.group_id,
+            groupMemberId: membership.id,
+            membership
+          });
+        }
       }
+    } else {
+      // Update match payment status
+      const match = await Match.findByPk(payment.match_id);
+      if (match) {
+        if (match.user1_id === payment.user_id) {
+          match.user1_payment_status = status;
+        } else if (match.user2_id === payment.user_id) {
+          match.user2_payment_status = status;
+        }
 
-      const matchConfirmed = markMatchConfirmedIfPaid(match);
+        const matchConfirmed = markMatchConfirmedIfPaid(match);
 
-      await match.save();
-      
-      // Notify both users about payment status update
-      emitToUser(match.user1_id, 'paymentStatusUpdate', { matchId: match.id, user1_status: match.user1_payment_status, user2_status: match.user2_payment_status });
-      emitToUser(match.user2_id, 'paymentStatusUpdate', { matchId: match.id, user1_status: match.user1_payment_status, user2_status: match.user2_payment_status });
+        await match.save();
+        
+        // Notify both users about payment status update
+        emitToUser(match.user1_id, 'paymentStatusUpdate', { matchId: match.id, user1_status: match.user1_payment_status, user2_status: match.user2_payment_status });
+        emitToUser(match.user2_id, 'paymentStatusUpdate', { matchId: match.id, user1_status: match.user1_payment_status, user2_status: match.user2_payment_status });
 
-      if (matchConfirmed) {
-        emitToUser(match.user1_id, 'rideConfirmed', { matchId: match.id, status: 'confirmed', match });
-        emitToUser(match.user2_id, 'rideConfirmed', { matchId: match.id, status: 'confirmed', match });
+        if (matchConfirmed) {
+          emitToUser(match.user1_id, 'rideConfirmed', { matchId: match.id, status: 'confirmed', match });
+          emitToUser(match.user2_id, 'rideConfirmed', { matchId: match.id, status: 'confirmed', match });
+        }
       }
     }
   } else {
     // Update in memory store
-    const match = memoryStore.matches.find((m) => m.id === payment.match_id);
-    if (match) {
-      if (match.user1_id === payment.user_id) {
-        match.user1_payment_status = status;
-      } else if (match.user2_id === payment.user_id) {
-        match.user2_payment_status = status;
+    if (payment.payment_type === 'group' || payment.group_member_id) {
+      const membership = memoryStore.groupMembers.find((entry) => entry.id === payment.group_member_id);
+      if (membership) {
+        membership.payment_status = status;
+        if (status === 'success') {
+          membership.status = 'verified';
+        }
+        membership.payment_reference = payment.payment_reference;
+        membership.payment_url = payment.payment_url;
+
+        emitToUser(payment.user_id, 'groupPaymentStatus', {
+          groupId: membership.group_id,
+          groupMemberId: membership.id,
+          status,
+          membership,
+          paymentAmount: payment.amount
+        });
+
+        if (status === 'success') {
+          emitToUser(payment.user_id, 'groupMemberVerified', {
+            groupId: membership.group_id,
+            groupMemberId: membership.id,
+            membership
+          });
+        }
       }
+    } else {
+      const match = memoryStore.matches.find((m) => m.id === payment.match_id);
+      if (match) {
+        if (match.user1_id === payment.user_id) {
+          match.user1_payment_status = status;
+        } else if (match.user2_id === payment.user_id) {
+          match.user2_payment_status = status;
+        }
 
-      const matchConfirmed = markMatchConfirmedIfPaid(match);
+        const matchConfirmed = markMatchConfirmedIfPaid(match);
 
-      if (matchConfirmed) {
-        emitToUser(match.user1_id, 'rideConfirmed', { matchId: match.id, status: 'confirmed', match });
-        emitToUser(match.user2_id, 'rideConfirmed', { matchId: match.id, status: 'confirmed', match });
+        if (matchConfirmed) {
+          emitToUser(match.user1_id, 'rideConfirmed', { matchId: match.id, status: 'confirmed', match });
+          emitToUser(match.user2_id, 'rideConfirmed', { matchId: match.id, status: 'confirmed', match });
+        }
       }
     }
   }
@@ -159,11 +229,12 @@ async function verifyPaystackReference(reference) {
 const paymentController = {
   async processPayment(req, res) {
     try {
-      const { matchId, userId, amount } = req.body;
-      if (!matchId || !userId || !amount) {
-        return res.status(400).json({ success: false, message: 'matchId, userId, and amount are required' });
+      const { matchId, groupId, groupMemberId, userId, amount } = req.body;
+      if (!userId || !amount || (!matchId && !groupMemberId)) {
+        return res.status(400).json({ success: false, message: 'userId, amount, and a payment target are required' });
       }
-      const data = await initializePaystackTransaction(matchId, userId, amount);
+      const paymentType = groupMemberId ? 'group' : 'match';
+      const data = await initializePaystackTransaction({ paymentType, matchId, groupId, groupMemberId, userId, amount });
       res.json({ success: true, ...data });
     } catch (error) {
       console.error('Error in processPayment:', error.response?.data || error.message);

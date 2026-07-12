@@ -10,6 +10,9 @@ const heroImage = { uri: 'https://images.unsplash.com/photo-1512453979798-5ea266
 export default function PaymentScreen({ navigation, route }) {
   const amount = route.params?.amount || 24;
   const matchId = route.params?.matchId;
+  const paymentType = route.params?.paymentType || 'match';
+  const groupId = route.params?.groupId;
+  const groupMemberId = route.params?.groupMemberId;
   const share = Math.round(amount / 2);
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Ready to pay');
@@ -26,22 +29,27 @@ export default function PaymentScreen({ navigation, route }) {
     const clean1 = onSocket('paymentStatus', ({ status }) => {
       setStatusMessage(`Payment update: ${status}`);
     });
+    const cleanGroup = onSocket('groupPaymentStatus', ({ status }) => {
+      setStatusMessage(`Group payment update: ${status}`);
+    });
+    const cleanVerified = onSocket('groupMemberVerified', () => {
+      setStatusMessage('Group membership verified.');
+    });
     const clean2 = onSocket('rideBooked', (ride) => {
       setStatusMessage(`Ride booked: ${ride.driver} arriving ${ride.eta}`);
       navigation.navigate('RideDetails', { ride });
     });
-    return () => { clean1(); clean2(); };
+    return () => { clean1(); cleanGroup(); cleanVerified(); clean2(); };
   }, [navigation]);
 
   async function handlePaystack() {
     try {
       setLoading(true);
       setStatusMessage('Initializing payment...');
-        const data = await postJson('/processPayment', {
-        matchId,
-        userId: currentUser?.id,
-        amount
-      });
+      const payload = paymentType === 'group'
+        ? { groupId, groupMemberId, userId: currentUser?.id, amount }
+        : { matchId, userId: currentUser?.id, amount };
+      const data = await postJson('/processPayment', payload);
 
       setReference(data.reference);
       setPaymentUrl(data.authorizationUrl);
@@ -64,11 +72,15 @@ export default function PaymentScreen({ navigation, route }) {
       setStatusMessage('Verifying payment...');
       const result = await getJson(`/verifyPayment/${encodeURIComponent(reference)}`);
       const status = result.payment.status;
-      setStatusMessage(status === 'success' ? 'Payment success! Booking ride...' : 'Payment failed.');
+      setStatusMessage(status === 'success' ? 'Payment success!' : 'Payment failed.');
 
-      if (status === 'success') {
+      if (status === 'success' && paymentType !== 'group') {
         const rideResult = await postJson('/bookRide', { matchId });
         navigation.navigate('RideDetails', { ride: rideResult.ride });
+      }
+
+      if (status === 'success' && paymentType === 'group') {
+        navigation.goBack();
       }
     } catch (err) {
       setStatusMessage(err.message || 'Verification failed');
@@ -86,8 +98,8 @@ export default function PaymentScreen({ navigation, route }) {
           <View style={styles.infoCard}>
             <Text style={styles.label}>Total</Text>
             <Text style={styles.price}>GHS{amount}</Text>
-            <Text style={styles.label}>Your share</Text>
-            <Text style={styles.price}>GHS{share}</Text>
+            <Text style={styles.label}>{paymentType === 'group' ? 'Group share' : 'Your share'}</Text>
+            <Text style={styles.price}>GHS{paymentType === 'group' ? amount : share}</Text>
           </View>
 
           <Text style={styles.note}>Use test card 4084 4084 0840 8408 with any future expiry and CVV.</Text>
