@@ -85,7 +85,7 @@ export default function BrowseGroupsScreen({ navigation, route }) {
                   <Text style={styles.groupTitle}>{group.origin} → {group.location}</Text>
                   <Text style={styles.memberPill}>{group.memberCount} riders</Text>
                 </View>
-                <Text style={styles.groupMeta}>Time: {group.time} • Budget: ₦{group.budget}</Text>
+                <Text style={styles.groupMeta}>Time: {group.time} • Budget: GHS{group.budget}</Text>
                 {group.isMember ? (
                   <View style={styles.memberBox}>
                     <Text style={styles.memberTitle}>Group members</Text>
